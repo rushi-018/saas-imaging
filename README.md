@@ -5,22 +5,26 @@ A comprehensive Next.js-based SaaS platform for image and video processing with 
 ## 🚀 Features
 
 ### Authentication & Security
+
 - **Clerk Authentication**: Secure user authentication and session management
 - **Protected Routes**: Middleware-based route protection
 - **User Dashboard**: Personalized user experience
 
 ### Image Processing
+
 - **Social Media Formats**: Transform images for Instagram, Twitter, Facebook
 - **Custom Save Dialogs**: File System Access API for better UX
 - **Multiple Export Options**: PNG, JPEG support with custom filenames
 - **Real-time Previews**: Live image transformation previews
 
 ### Video Processing
+
 - **Cloudinary Integration**: Professional video compression and optimization
 - **Database Storage**: PostgreSQL with Prisma ORM
 - **Upload Management**: Secure file uploads with validation
 
 ### UI/UX
+
 - **DaisyUI Components**: Modern, accessible UI components
 - **Tailwind CSS**: Responsive design system
 - **Dark/Light Themes**: Multiple theme options
@@ -38,28 +42,31 @@ A comprehensive Next.js-based SaaS platform for image and video processing with 
 ## 📦 Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/rushi-018/saas-imaging.git
    cd saas-imaging
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Environment Setup**
    Create a `.env` file with the following variables:
+
    ```env
    # Database
    DATABASE_URL="your_postgresql_connection_string"
-   
+
    # Clerk Authentication
    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="your_clerk_publishable_key"
    CLERK_SECRET_KEY="your_clerk_secret_key"
    NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
    NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
-   
+
    # Cloudinary
    CLOUDINARY_API_KEY="your_cloudinary_api_key"
    CLOUDINARY_API_SECRET="your_cloudinary_api_secret"
@@ -67,12 +74,14 @@ A comprehensive Next.js-based SaaS platform for image and video processing with 
    ```
 
 4. **Database Setup**
+
    ```bash
    npx prisma migrate dev --name init
    npx prisma generate
    ```
 
 5. **Run Development Server**
+
    ```bash
    npm run dev
    ```
@@ -105,7 +114,7 @@ A comprehensive Next.js-based SaaS platform for image and video processing with 
 ## 🎨 Available Social Media Formats
 
 - **Instagram Square (1:1)**: 1080x1080px
-- **Instagram Portrait (4:5)**: 1080x1350px  
+- **Instagram Portrait (4:5)**: 1080x1350px
 - **Twitter Post (16:9)**: 1200x675px
 - **Twitter Header (3:1)**: 1500x500px
 - **Facebook Cover (205:78)**: 820x312px
@@ -143,6 +152,7 @@ model video {
 4. Deploy automatically
 
 ### Environment Variables for Production
+
 Make sure to set all environment variables in your deployment platform.
 
 ## 🤝 Contributing
