@@ -13,14 +13,139 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model video {
-  id             String   @id @default(cuid())
-  title          String
-  description    String
-  publicId       String
-  originalSize   String
-  compressedSize String
-  duration       Float
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+// Organization model for multi-tenancy
+model Organization {
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  plan            String        @default("free") // free, creator, business, agency
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  users           User[]
+  videos          Video[]
+  brandKits       BrandKit[]
+  usages          Usage[]
+  subscription    Subscription?
+}
+
+// User model with organization relationship
+model User {
+  id              String        @id
+  email           String        @unique
+  firstName       String?
+  lastName        String?
+  imageUrl        String?
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role            String        @default("member") // owner, admin, member
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  videos          Video[]
+  comments        Comment[]
+}
+
+// Enhanced video model
+model Video {
+  id              String        @id @default(cuid())
+  title           String
+  description     String
+  publicId        String
+  originalSize    String
+  compressedSize  String
+  duration        Float
+  format          String        @default("mp4")
+  resolution      String?       // 720p, 1080p, 4K
+  status          String        @default("draft") // draft, review, approved, published
+  transforms      VideoTransform[]
+  comments        Comment[]
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  brandKitId      String?
+  brandKit        BrandKit?     @relation(fields: [brandKitId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+// Video transform for platform-specific versions
+model VideoTransform {
+  id              String        @id @default(cuid())
+  name            String
+  transformType   String        // resize, social, trim, watermark, brandKit
+  settings        Json
+  outputUrl       String
+  outputPublicId  String
+  status          String        // processing, completed, failed
+  videoId         String
+  video           Video         @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  brandKitId      String?
+  brandKit        BrandKit?     @relation(fields: [brandKitId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+// Comments for collaboration
+model Comment {
+  id              String        @id @default(cuid())
+  content         String
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  videoId         String?
+  video           Video?        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  timestamp       Float?        // For video timestamp comments
+  resolved        Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+// Brand kit for consistent branding
+model BrandKit {
+  id              String          @id @default(cuid())
+  name            String
+  organizationId  String
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  logoPublicId    String?
+  primaryColor    String?
+  secondaryColor  String?
+  fontFamily      String?
+  videos          Video[]
+  videoTransforms  VideoTransform[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+// Subscription model for payment management
+model Subscription {
+  id                  String        @id @default(cuid())
+  organizationId      String        @unique
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stripeCustomerId    String?       @unique
+  stripeSubscriptionId String?      @unique
+  plan                String        // creator, business, agency
+  status              String        // active, canceled, past_due
+  currentPeriodStart  DateTime
+  currentPeriodEnd    DateTime
+  cancelAtPeriodEnd   Boolean       @default(false)
+  videoCredits        Int           @default(0)
+  imageCredits        Int           @default(0)
+  storageLimit        Int           @default(5) // in GB
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+// Usage tracking for quota management
+model Usage {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  month               Int
+  year                Int
+  type                String        // videoProcessed, imageProcessed, videoTransform
+  count               Int           @default(1)
+  storageUsed         Float         @default(0) // in GB
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, type, year, month])
 }

@@ -21,7 +21,6 @@ interface CloudinaryUploadResult {
 
 export async function POST(request: NextRequest) {
   try {
-    //todo to check user
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -38,11 +37,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get user and organization
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { 
+        organization: {
+          include: { subscription: true }
+        }
+      }
+    });
+
+    if (!user || !user.organization) {
+      return NextResponse.json(
+        { error: "User organization not found. Please create an organization first." },
+        { status: 404 }
+      );
+    }
+
+    const organization = user.organization;
+    const subscription = organization.subscription;
+
+    // Check if the user has enough video credits
+    if (subscription && subscription.videoCredits <= 0) {
+      return NextResponse.json(
+        { 
+          error: "Video processing credits exhausted for this billing period", 
+          subscription 
+        },
+        { status: 403 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
     const originalSize = formData.get("originalSize") as string;
+    const brandKitId = formData.get("brandKitId") as string | null;
 
     if (!file) {
       return NextResponse.json({ error: "File not found" }, { status: 400 });
@@ -51,13 +82,39 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    // Determine quality based on subscription plan
+    const qualitySettings = {
+      free: { quality: "auto", fetch_format: "mp4" },
+      creator: { quality: "80", fetch_format: "mp4" },
+      business: { quality: "90", fetch_format: "mp4" },
+      agency: { quality: "100", fetch_format: "mp4" },
+    };
+
+    const planQuality = qualitySettings[organization.plan as keyof typeof qualitySettings] || 
+                        qualitySettings.free;
+
+    // Extract file extension for determining resolution limits
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    
+    // Determine max resolution based on plan
+    const maxResolutions = {
+      free: 720,
+      creator: 1080,
+      business: 1440,
+      agency: 2160, // 4K
+    };
+    
+    const maxHeight = maxResolutions[organization.plan as keyof typeof maxResolutions] || 720;
+
     const result = await new Promise<CloudinaryUploadResult>(
       (resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             resource_type: "video",
-            folder: "video-uploads",
-            transformation: [{ quality: "auto", fetch_format: "mp4" }],
+            folder: `cloudmedia/${organization.id}`,
+            transformation: [
+              { ...planQuality, height: maxHeight, crop: "limit" }
+            ],
           },
           (error, result) => {
             if (error) reject(error);
@@ -67,16 +124,41 @@ export async function POST(request: NextRequest) {
         uploadStream.end(buffer);
       }
     );
-    const video = await prisma.video.create({
-      data: {
-        title,
-        description,
-        publicId: result.public_id,
-        originalSize: originalSize,
-        compressedSize: String(result.bytes),
-        duration: result.duration || 0,
-      },
+
+    // Create the video in a transaction along with updating credits
+    const { video } = await prisma.$transaction(async (tx) => {
+      // Create the video
+      const video = await tx.video.create({
+        data: {
+          title,
+          description,
+          publicId: result.public_id,
+          originalSize: originalSize,
+          compressedSize: String(result.bytes),
+          duration: result.duration || 0,
+          format: "mp4",
+          resolution: `${Math.min(result.height || 720, maxHeight)}p`,
+          userId: userId,
+          organizationId: organization.id,
+          brandKitId: brandKitId || undefined,
+        },
+      });
+      
+      // Deduct a video credit if on a paid plan
+      if (subscription && organization.plan !== "free") {
+        await tx.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            videoCredits: {
+              decrement: 1
+            }
+          }
+        });
+      }
+      
+      return { video };
     });
+    
     return NextResponse.json(video);
   } catch (error) {
     console.log("UPload video failed", error);
