@@ -18,7 +18,7 @@ model video {
   title          String
   description    String
   publicId       String
-  orginalSize    String
+  originalSize   String
   compressedSize String
   duration       Float
   createdAt      DateTime @default(now())

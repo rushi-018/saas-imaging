@@ -3,13 +3,6 @@
 import React, {useState, useEffect, useRef} from 'react'
 import { CldImage } from 'next-cloudinary';
 
-// TypeScript declarations for File System Access API
-declare global {
-  interface Window {
-    showSaveFilePicker?: (options?: any) => Promise<any>;
-  }
-}
-
 const socialFormats = {
     "Instagram Square (1:1)": { width: 1080, height: 1080, aspectRatio: "1:1" },
     "Instagram Portrait (4:5)": { width: 1080, height: 1350, aspectRatio: "4:5" },
@@ -25,7 +18,6 @@ const socialFormats = {
     const [selectedFormat, setSelectedFormat] = useState<SocialFormat>("Instagram Square (1:1)");
     const [isUploading, setIsUploading] = useState(false);
     const [isTransforming, setIsTransforming] = useState(false);
-    const [isDownloading, setIsDownloading] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
 
 
@@ -62,81 +54,24 @@ const socialFormats = {
         }
     };
 
-    const handleDownload = async () => {
+    const handleDownload = () => {
         if(!imageRef.current) return;
 
-        setIsDownloading(true);
-
-        try {
-            const response = await fetch(imageRef.current.src);
-            const blob = await response.blob();
-            
-            // Default filename
-            const defaultFileName = `${selectedFormat.replace(/\s+/g, "_").toLowerCase()}.png`;
-
-            // Check if File System Access API is supported (Chrome/Edge)
-            if ('showSaveFilePicker' in window) {
-                try {
-                    // @ts-ignore - File System Access API
-                    const fileHandle = await window.showSaveFilePicker({
-                        suggestedName: defaultFileName,
-                        types: [
-                            {
-                                description: 'PNG Images',
-                                accept: {
-                                    'image/png': ['.png'],
-                                },
-                            },
-                            {
-                                description: 'JPEG Images', 
-                                accept: {
-                                    'image/jpeg': ['.jpg', '.jpeg'],
-                                },
-                            },
-                        ],
-                    });
-                    
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                    
-                    alert('Image saved successfully!');
-                    return;
-                } catch (err: any) {
-                    // User cancelled the save dialog
-                    if (err.name === 'AbortError') {
-                        return;
-                    }
-                    console.error('Error saving file:', err);
-                }
-            }
-            
-            // Fallback for browsers that don't support File System Access API
-            // Prompt user for filename
-            const userFileName = prompt(
-                'Enter filename (without extension):',
-                selectedFormat.replace(/\s+/g, "_").toLowerCase()
-            );
-            
-            if (userFileName === null) return; // User cancelled
-            
-            const finalFileName = userFileName.trim() + '.png';
-            
-            const url = window.URL.createObjectURL(blob);
+        fetch(imageRef.current.src)
+        .then((response) => response.blob())
+        .then((blob) => {
+            const url = window.URL.createObjectURL(blob)
             const link = document.createElement("a");
             link.href = url;
-            link.download = finalFileName;
+            link.download = `${selectedFormat
+          .replace(/\s+/g, "_")
+          .toLowerCase()}.png`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
-            
-        } catch (error) {
-            console.error('Download failed:', error);
-            alert('Failed to download image. Please try again.');
-        } finally {
-            setIsDownloading(false);
-        }
+            document.body.removeChild(link);
+        })
     }
 
 
@@ -209,12 +144,8 @@ const socialFormats = {
                   </div>
 
                   <div className="card-actions justify-end mt-6">
-                    <button 
-                      className={`btn btn-primary ${isDownloading ? 'loading' : ''}`} 
-                      onClick={handleDownload}
-                      disabled={isDownloading}
-                    >
-                      {isDownloading ? 'Preparing Download...' : `Download for ${selectedFormat}`}
+                    <button className="btn btn-primary" onClick={handleDownload}>
+                      Download for {selectedFormat}
                     </button>
                   </div>
                 </div>

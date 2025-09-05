@@ -2,7 +2,6 @@
 import React, {useState} from 'react'
 import axios from 'axios'
 import { useRouter } from 'next/navigation'
-import toast, { Toaster } from 'react-hot-toast'
 
 function VideoUpload() {
     const [file, setFile] = useState<File | null>(null)
@@ -20,16 +19,8 @@ function VideoUpload() {
         if (!file) return;
 
         if (file.size > MAX_FILE_SIZE) {
-          //TODO: add notification
-          console.error("File size too large")
-          // You may want to add a proper notification system like toast here
-          // Example: toast.error("File size too large")
-          if (file.size > MAX_FILE_SIZE) {
-            toast.error("File size should be less than 70MB")
-            return;
-          }
-          toast.error("File size should be less than 70MB")
-            // alert("File size too large")
+            //TODO: add notification
+            alert("File size too large")
             return;
         }
 
@@ -53,10 +44,9 @@ function VideoUpload() {
 
     }
 
+
     return (
         <div className="container mx-auto p-4">
-          <Toaster />
-          {/* <h1 className="text-2xl font-bold mb-4">Upload Video</h1> */}
           <h1 className="text-2xl font-bold mb-4">Upload Video</h1>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
