@@ -16,7 +16,17 @@ interface CloudinaryUploadResult {
   public_id: string;
   bytes: number;
   duration?: number;
-  [key: string]: any;
+  secure_url: string;
+  width: number;
+  height: number;
+  format: string;
+  resource_type: string;
+  created_at: string;
+  url: string;
+  folder?: string;
+  original_filename?: string;
+  bit_rate?: number;
+  frame_rate?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -40,16 +50,19 @@ export async function POST(request: NextRequest) {
     // Get user and organization
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { 
+      include: {
         organization: {
-          include: { subscription: true }
-        }
-      }
+          include: { subscription: true },
+        },
+      },
     });
 
     if (!user || !user.organization) {
       return NextResponse.json(
-        { error: "User organization not found. Please create an organization first." },
+        {
+          error:
+            "User organization not found. Please create an organization first.",
+        },
         { status: 404 }
       );
     }
@@ -60,9 +73,9 @@ export async function POST(request: NextRequest) {
     // Check if the user has enough video credits
     if (subscription && subscription.videoCredits <= 0) {
       return NextResponse.json(
-        { 
-          error: "Video processing credits exhausted for this billing period", 
-          subscription 
+        {
+          error: "Video processing credits exhausted for this billing period",
+          subscription,
         },
         { status: 403 }
       );
@@ -90,12 +103,13 @@ export async function POST(request: NextRequest) {
       agency: { quality: "100", fetch_format: "mp4" },
     };
 
-    const planQuality = qualitySettings[organization.plan as keyof typeof qualitySettings] || 
-                        qualitySettings.free;
+    const planQuality =
+      qualitySettings[organization.plan as keyof typeof qualitySettings] ||
+      qualitySettings.free;
 
     // Extract file extension for determining resolution limits
-    const fileExtension = file.name.split('.').pop()?.toLowerCase();
-    
+    const fileExtension = file.name.split(".").pop()?.toLowerCase();
+
     // Determine max resolution based on plan
     const maxResolutions = {
       free: 720,
@@ -103,8 +117,9 @@ export async function POST(request: NextRequest) {
       business: 1440,
       agency: 2160, // 4K
     };
-    
-    const maxHeight = maxResolutions[organization.plan as keyof typeof maxResolutions] || 720;
+
+    const maxHeight =
+      maxResolutions[organization.plan as keyof typeof maxResolutions] || 720;
 
     const result = await new Promise<CloudinaryUploadResult>(
       (resolve, reject) => {
@@ -113,7 +128,7 @@ export async function POST(request: NextRequest) {
             resource_type: "video",
             folder: `cloudmedia/${organization.id}`,
             transformation: [
-              { ...planQuality, height: maxHeight, crop: "limit" }
+              { ...planQuality, height: maxHeight, crop: "limit" },
             ],
           },
           (error, result) => {
@@ -143,22 +158,22 @@ export async function POST(request: NextRequest) {
           brandKitId: brandKitId || undefined,
         },
       });
-      
+
       // Deduct a video credit if on a paid plan
       if (subscription && organization.plan !== "free") {
         await tx.subscription.update({
           where: { id: subscription.id },
           data: {
             videoCredits: {
-              decrement: 1
-            }
-          }
+              decrement: 1,
+            },
+          },
         });
       }
-      
+
       return { video };
     });
-    
+
     return NextResponse.json(video);
   } catch (error) {
     console.log("UPload video failed", error);

@@ -44,6 +44,10 @@ function Home() {
         return <div>Loading...</div>
     }
 
+    if(error){
+        return <div className="text-center text-red-500">{error}</div>
+    }
+
     return (
         <div className="container mx-auto p-4">
           <h1 className="text-2xl font-bold mb-4">Videos</h1>

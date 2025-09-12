@@ -9,6 +9,7 @@ A comprehensive Next.js-based SaaS platform for image and video processing with 
 - **Clerk Authentication**: Secure user authentication and session management
 - **Protected Routes**: Middleware-based route protection
 - **User Dashboard**: Personalized user experience
+- **Multi-tenancy**: Organization-based access controls
 
 ### Image Processing
 
@@ -25,9 +26,16 @@ A comprehensive Next.js-based SaaS platform for image and video processing with 
 
 ### UI/UX
 
-- **DaisyUI Components**: Modern, accessible UI components
+- **ShadcnUI Components**: Modern, accessible UI components
 - **Tailwind CSS**: Responsive design system
 - **Dark/Light Themes**: Multiple theme options
+
+### Payment Processing
+
+- **Stripe Integration**: Global payment processing (regions where available)
+- **Razorpay Integration**: Local payment processing for Indian users
+- **Subscription Management**: Flexible monthly and annual plans
+- **Webhook Handling**: Automatic subscription updates based on payment events
 - **Loading States**: Smooth user feedback
 
 ## 🛠️ Tech Stack

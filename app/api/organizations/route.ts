@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
       include: {
         organization: {
           include: {
-            subscription: true
-          }
-        }
-      }
+            subscription: true,
+          },
+        },
+      },
     });
 
     // If user doesn't exist in our database yet, they don't have an organization
@@ -32,9 +32,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       hasOrganization: true,
-      organization: user.organization
+      organization: user.organization,
     });
-    
   } catch (error) {
     console.error("Error fetching organization:", error);
     return NextResponse.json(
@@ -50,38 +49,38 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
+
     const { name } = await request.json();
-    
+
     if (!name || name.trim() === "") {
       return NextResponse.json(
         { error: "Organization name is required" },
         { status: 400 }
       );
     }
-    
+
     // Generate a slug from the name
     const slug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
-    
+
     // Check if slug is already taken
     const existingOrg = await prisma.organization.findUnique({
-      where: { slug }
+      where: { slug },
     });
-    
+
     if (existingOrg) {
       return NextResponse.json(
         { error: "An organization with a similar name already exists" },
         { status: 400 }
       );
     }
-    
+
     // Create the organization and user in a transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create the organization
@@ -89,20 +88,20 @@ export async function POST(request: NextRequest) {
         data: {
           name,
           slug,
-          plan: "free"
-        }
+          plan: "free",
+        },
       });
-      
+
       // Create the user with owner role
       const user = await tx.user.create({
         data: {
           id: userId,
           email: "", // This will be updated later
           organizationId: organization.id,
-          role: "owner"
-        }
+          role: "owner",
+        },
       });
-      
+
       // Create initial subscription record with free plan
       const subscription = await tx.subscription.create({
         data: {
@@ -112,15 +111,14 @@ export async function POST(request: NextRequest) {
           currentPeriodStart: new Date(),
           currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
           videoCredits: 5, // Free plan credits
-          imageCredits: 20 // Free plan credits
-        }
+          imageCredits: 20, // Free plan credits
+        },
       });
-      
+
       return { organization, user, subscription };
     });
-    
+
     return NextResponse.json(result);
-    
   } catch (error) {
     console.error("Error creating organization:", error);
     return NextResponse.json(
@@ -136,36 +134,35 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
+
     const { name, organizationId } = await request.json();
-    
+
     // Check if the user is an owner or admin of this organization
     const user = await prisma.user.findFirst({
       where: {
         id: userId,
         organizationId,
-        role: { in: ["owner", "admin"] }
-      }
+        role: { in: ["owner", "admin"] },
+      },
     });
-    
+
     if (!user) {
       return NextResponse.json(
         { error: "You don't have permission to update this organization" },
         { status: 403 }
       );
     }
-    
+
     const updatedOrganization = await prisma.organization.update({
       where: { id: organizationId },
-      data: { name }
+      data: { name },
     });
-    
+
     return NextResponse.json(updatedOrganization);
-    
   } catch (error) {
     console.error("Error updating organization:", error);
     return NextResponse.json(
